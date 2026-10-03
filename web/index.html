@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>星载相机 APNG 动态图像复核台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>星载相机交付动态图像 · APNG 复核台</h1>
+      <div id="health" class="health" title="健康检查 /healthz">健康探测中…</div>
+    </header>
+
+    <main>
+      <section class="panel" aria-labelledby="input-title">
+        <h2 id="input-title">1. 粘贴 Base64 APNG（≤ 256 KiB）</h2>
+        <p class="hint">
+          仅接受 8 位 RGBA、非交错、宽高均不超过 128 像素、至多 8 帧的 PNG/APNG。
+          系统将核对签名、各块 CRC、acTL / fcTL / IDAT / fdAT 的顺序与序号，
+          逐帧独立解压并按五种 PNG 过滤规则还原，再严格执行 source/over 混合与
+          none / background / previous 处置。
+        </p>
+        <textarea id="paste" rows="8" spellcheck="false"
+          placeholder="在此粘贴 Base64（可带 data:image/png;base64, 前缀）"></textarea>
+        <div class="row">
+          <button id="submit" type="button">提交复核</button>
+          <button id="clear" type="button" class="secondary">清空草稿与结论</button>
+          <span id="size" class="size"></span>
+        </div>
+        <div id="error" class="error" role="alert" hidden></div>
+      </section>
+
+      <section class="panel" id="result-panel" aria-labelledby="result-title" hidden>
+        <h2 id="result-title">2. 复核结论</h2>
+        <div id="conclusion" class="conclusion"></div>
+
+        <h3>帧切换（画面均来自服务端冻结快照，浏览器端不参与任何合成）</h3>
+        <div class="switcher">
+          <div id="frame-tabs" class="tabs"></div>
+          <div class="stage-wrap">
+            <figure>
+              <figcaption>解滤波后帧区域像素</figcaption>
+              <div class="stage"><img id="region-img" alt="解滤波帧区域" /></div>
+            </figure>
+            <figure>
+              <figcaption>合成画布（冻结快照）</figcaption>
+              <div class="stage checker"><img id="canvas-img" alt="合成画布快照" /></div>
+            </figure>
+          </div>
+        </div>
+
+        <h3>逐帧记录</h3>
+        <div id="frames" class="frames"></div>
+      </section>
+    </main>
+
+    <footer>
+      <span>APNG Review · 像素历史污染审查</span>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,44 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apng-review:latest
+    container_name: apng-review-web
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+    ports:
+      # Host port is configurable via HOST_PORT; default 8080.
+      - "${HOST_PORT:-8080}:8080"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  # One-shot acceptance service:
+  #   docker compose run --rm verify
+  # or:
+  #   docker compose up --abort-on-container-exit --exit-code-from verify verify
+  # Runs unit tests, the page build check and HTTP smoke against `web`,
+  # then exits; the container exit code reports acceptance result.
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apng-review:latest
+    container_name: apng-review-verify
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      - BASE_URL=http://web:8080
+    command: ["sh", "-c", "npm run test && npm run build && npm run smoke"]
+    restart: "no"
