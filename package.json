@@ -1,0 +1,17 @@
+{
+  "name": "apng-frame-review",
+  "version": "1.0.0",
+  "description": "星载相机 APNG 帧处置与透明叠加复核工具",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/",
+    "check": "node scripts/check-build.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify": "sh scripts/verify.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

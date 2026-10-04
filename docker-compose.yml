@@ -1,0 +1,37 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apng-frame-review:latest
+    container_name: apng-frame-review-web
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8080"
+    ports:
+      # 宿主端口可用 HOST_PORT 覆盖，默认 8080
+      - "${HOST_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    restart: unless-stopped
+
+  # 验收服务：代码测试 → 页面构建检查 → 页面与 /healthz HTTP 冒烟；
+  # 全部通过后退出码 0，任一失败以非零退出码报告。
+  # 运行：docker compose build && docker compose run --rm verify
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: apng-frame-review:latest
+    container_name: apng-frame-review-verify
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      SMOKE_BASE_URL: "http://web:8080"
+    entrypoint: ["sh", "scripts/verify.sh"]
+    restart: "no"

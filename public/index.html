@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>星载相机 APNG 帧处置 / 透明叠加复核台</title>
+  <style>
+    :root {
+      --bg: #0f141b;
+      --panel: #171e28;
+      --panel-2: #1d2632;
+      --line: #2b3645;
+      --text: #dce4ee;
+      --muted: #8b98a9;
+      --accent: #4da3ff;
+      --ok: #35c08a;
+      --err: #ff6b6b;
+      --warn: #f5b942;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 17px; margin: 0; }
+    header .sub { color: var(--muted); font-size: 12px; }
+    main {
+      display: grid;
+      grid-template-columns: minmax(360px, 460px) 1fr;
+      gap: 16px;
+      padding: 16px 24px 32px;
+      align-items: start;
+    }
+    @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .panel h2 {
+      font-size: 13px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      background: #0b0f15;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+    textarea:focus { outline: 1px solid var(--accent); }
+    .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+    button {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 7px 14px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: #1c4b82; border-color: #2f6db5; }
+    button.primary:hover { background: #245d9e; }
+    button.danger:hover { border-color: var(--err); color: #ffc4c4; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .counter { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+    .counter.over { color: var(--err); }
+    .banner {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .banner.error { display: block; background: #3a1d22; border: 1px solid #7a3238; color: #ffc9c9; }
+    .banner.error .offset {
+      display: inline-block;
+      margin-top: 6px;
+      font-family: var(--mono);
+      background: #241014;
+      border: 1px solid #7a3238;
+      border-radius: 5px;
+      padding: 2px 8px;
+      color: #ff9b9b;
+    }
+    .banner.ok { display: block; background: #14311f; border: 1px solid #2c6b48; color: #bdf0d6; }
+    .constraints { color: var(--muted); font-size: 12px; margin-top: 12px; }
+    .constraints code { color: var(--text); }
+    .overview { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+    .overview .item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+    .overview .k { color: var(--muted); font-size: 11px; }
+    .overview .v { font-family: var(--mono); font-size: 15px; }
+    .frame-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .frame-tabs button { padding: 6px 12px; font-family: var(--mono); }
+    .frame-tabs button.active { background: #1c4b82; border-color: var(--accent); }
+    .frame-grid { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 16px; }
+    @media (max-width: 720px) { .frame-grid { grid-template-columns: 1fr; } }
+    .canvas-wrap {
+      background:
+        repeating-conic-gradient(#1a222d 0% 25%, #141a22 0% 50%) 0 0 / 16px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      max-width: 100%;
+      background: transparent;
+    }
+    .canvas-meta { color: var(--muted); font-size: 12px; font-family: var(--mono); }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; width: 42%; }
+    td.mono, .mono { font-family: var(--mono); word-break: break-all; }
+    .section-title { margin: 14px 0 6px; font-size: 12px; color: var(--accent); letter-spacing: .05em; }
+    .tag { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 11px; border: 1px solid var(--line); }
+    .tag.over { color: #9ecbff; border-color: #2f6db5; }
+    .tag.source { color: #f0c98f; border-color: #8a6a35; }
+    .tag.none { color: #bdf0d6; border-color: #2c6b48; }
+    .tag.background { color: #ffd9a0; border-color: #8a6a35; }
+    .tag.previous { color: #e3b8ff; border-color: #6e4490; }
+    .empty { color: var(--muted); padding: 28px 0; text-align: center; }
+    footer { color: var(--muted); font-size: 12px; padding: 0 24px 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>星载相机 APNG 帧复核台</h1>
+    <span class="sub">帧处置（none / background / previous）与透明混合（source / over）像素历史核查</span>
+  </header>
+
+  <main>
+    <section class="panel" id="input-panel">
+      <h2>提交复核</h2>
+      <label class="counter" for="src">粘贴 Base64 APNG（可含 <code>data:image/png;base64,</code> 前缀）</label>
+      <textarea id="src" spellcheck="false" autocomplete="off"
+        placeholder="iVBORw0KGgoAAAANSUhEUg..."></textarea>
+      <div class="row">
+        <button class="primary" id="btn-review">提交复核</button>
+        <button id="btn-sample">载入内置三帧示例</button>
+        <button class="danger" id="btn-clear">清空草稿与结论</button>
+      </div>
+      <div class="row">
+        <span class="counter" id="counter">0 / 262144 字节</span>
+      </div>
+      <div class="banner" id="banner"></div>
+      <div class="constraints">
+        验收边界：8 位 RGBA、非交错、宽高 ≤ <code>128</code>、至多 <code>8</code> 帧；<br />
+        校验 PNG 签名、每块 CRC、<code>acTL / fcTL / IDAT / fdAT</code> 顺序与序号；违约时保留输入并报告首个原始字节偏移。
+      </div>
+    </section>
+
+    <section class="panel" id="result-panel">
+      <h2>复核结论</h2>
+      <div id="result">
+        <div class="empty">尚无成功复核记录。提交合法 APNG 后在此查看逐帧控制参数、解滤波像素摘要、合成画布摘要，并可切换冻结画面。</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    每帧独立 zlib 解压 → 五种 PNG 过滤逐行还原 → 严格 source/over 合成 → 冻结显示快照 → 再执行 none/background/previous 处置；
+    previous 恢复绘制前整画布快照，帧切换只读取冻结快照。
+  </footer>
+
+  <script type="module" src="/public/app.js"></script>
+</body>
+</html>
